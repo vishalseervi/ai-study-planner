@@ -8,7 +8,12 @@ const router = express.Router();
 
 router.post(
   "/signup",
-  [body("name").notEmpty(), body("email").isEmail(), body("password").isLength({ min: 6 })],
+  [
+    body("name").notEmpty(),
+    body("email").isEmail(),
+    body("password").isLength({ min: 6 }),
+    body("role").optional().isIn(["student", "teacher"]),
+  ],
   asyncHandler(signup)
 );
 router.post("/login", [body("email").isEmail(), body("password").notEmpty()], asyncHandler(login));

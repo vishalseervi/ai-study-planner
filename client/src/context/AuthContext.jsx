@@ -36,8 +36,8 @@ export function AuthProvider({ children }) {
     persistAuth(res.data);
   }
 
-  async function signup(name, email, password) {
-    const res = await api.post("/auth/signup", { name, email, password });
+  async function signup(payload) {
+    const res = await api.post("/auth/signup", payload);
     persistAuth(res.data);
   }
 

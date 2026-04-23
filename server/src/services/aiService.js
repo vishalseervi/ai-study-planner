@@ -1,7 +1,7 @@
 const axios = require("axios");
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
-const DEFAULT_MODEL = process.env.OLLAMA_MODEL || "mistral";
+const DEFAULT_MODEL = process.env.OLLAMA_MODEL || "phi3";
 
 async function askAiStudyCoach({ message, model }) {
   const usedModel = model || DEFAULT_MODEL;

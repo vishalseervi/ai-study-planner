@@ -11,6 +11,10 @@ const sessionRoutes = require("./routes/sessionRoutes");
 const statsRoutes = require("./routes/statsRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
+const mlRoutes = require("./routes/mlRoutes");
+const analyticsRoutes = require("./routes/analyticsRoutes");
+const studentRoutes = require("./routes/studentRoutes");
+const coachRoutes = require("./routes/coachRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -27,6 +31,10 @@ app.use("/api/sessions", sessionRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/ml", mlRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/students", studentRoutes);
+app.use("/api/coach", coachRoutes);
 
 app.use(errorMiddleware);
 

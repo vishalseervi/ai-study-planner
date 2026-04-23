@@ -13,12 +13,21 @@ async function signup(req, res) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ message: errors.array()[0].msg });
 
-  const { name, email, password } = req.body;
+  const { name, email, password, role, className, studentId, university, course } = req.body;
   const exists = await User.findOne({ email });
   if (exists) return res.status(400).json({ message: "Email already in use" });
 
   const hashed = await bcrypt.hash(password, 10);
-  const user = await User.create({ name, email, password: hashed });
+  const user = await User.create({
+    name,
+    email,
+    password: hashed,
+    role: role || "student",
+    className: className || "BCA-4A",
+    studentId: studentId || "",
+    university: university || undefined,
+    course: course || undefined,
+  });
   const token = signToken(user._id);
 
   res.status(201).json({
@@ -27,6 +36,9 @@ async function signup(req, res) {
       id: user._id,
       name: user.name,
       email: user.email,
+      role: user.role,
+      studentId: user.studentId,
+      className: user.className,
       university: user.university,
       course: user.course,
     },
@@ -51,6 +63,9 @@ async function login(req, res) {
       id: user._id,
       name: user.name,
       email: user.email,
+      role: user.role,
+      studentId: user.studentId,
+      className: user.className,
       university: user.university,
       course: user.course,
     },

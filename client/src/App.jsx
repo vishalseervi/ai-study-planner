@@ -5,10 +5,10 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import DashboardPage from "./pages/DashboardPage";
-import TasksPage from "./pages/TasksPage";
-import ChartsPage from "./pages/ChartsPage";
-import SettingsPage from "./pages/SettingsPage";
 import AiCoachPage from "./pages/AiCoachPage";
+import PlannerPage from "./pages/PlannerPage";
+import TeacherAnalyticsPage from "./pages/TeacherAnalyticsPage";
+import StudentsPage from "./pages/StudentsPage";
 
 function App() {
   return (
@@ -25,10 +25,10 @@ function App() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="tasks" element={<TasksPage />} />
-        <Route path="charts" element={<ChartsPage />} />
+        <Route path="planner" element={<PlannerPage />} />
+        <Route path="teacher-analytics" element={<TeacherAnalyticsPage />} />
+        <Route path="students" element={<StudentsPage />} />
         <Route path="ai" element={<AiCoachPage />} />
-        <Route path="settings" element={<SettingsPage />} />
       </Route>
     </Routes>
   );

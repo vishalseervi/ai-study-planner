@@ -3,22 +3,27 @@ import { motion } from "framer-motion";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 
-const links = [
-  { to: "/dashboard", label: "Dashboard" },
-  { to: "/tasks", label: "Tasks" },
-  { to: "/charts", label: "Charts" },
-  { to: "/ai", label: "AI Coach" },
-  { to: "/settings", label: "Settings" },
-];
-
 function Layout() {
   const { toggleTheme, theme } = useTheme();
   const { user, logout } = useAuth();
+  const links =
+    user?.role === "teacher"
+      ? [
+          { to: "/dashboard", label: "Overview" },
+          { to: "/teacher-analytics", label: "Class Analytics" },
+          { to: "/students", label: "Students" },
+          { to: "/ai", label: "Coach Assistant" },
+        ]
+      : [
+          { to: "/dashboard", label: "My Dashboard" },
+          { to: "/planner", label: "Adaptive Planner" },
+          { to: "/ai", label: "Data Chatbot" },
+        ];
 
   return (
     <div className="layout">
       <aside className="sidebar">
-        <h2 className="logo">StudyFlow</h2>
+        <h2 className="logo">Predictive StudyLab</h2>
         <button className="btn" onClick={toggleTheme}>
           {theme === "light" ? "Dark mode" : "Light mode"}
         </button>
@@ -35,7 +40,7 @@ function Layout() {
         </nav>
         <div className="small-card">
           <p>{user?.name}</p>
-          <small>{user?.course}</small>
+          <small>{user?.role === "teacher" ? `Teacher - ${user?.className}` : user?.course}</small>
           <button className="btn ghost" onClick={logout}>
             Logout
           </button>
