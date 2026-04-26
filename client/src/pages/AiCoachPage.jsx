@@ -1,28 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import api from "../api/client";
-import { useAuth } from "../context/AuthContext";
-
-const DEFAULT_MESSAGES = [
-  {
-    role: "assistant",
-    text: "Ask for performance-backed advice based on your tracked data.",
-  },
-];
+import { useMemo, useState } from "react";
+import { useChat } from "../context/ChatContext";
 
 function AiCoachPage() {
-  const { user } = useAuth();
-  const storageKey = useMemo(
-    () => `ai-chat-history:${user?._id || user?.email || "guest"}`,
-    [user]
-  );
-  const modeStorageKey = useMemo(
-    () => `ai-chat-mode:${user?._id || user?.email || "guest"}`,
-    [user]
-  );
+  const { messages, mode, setMode, isStreaming, hydrated, sendMessage, resetChat } = useChat();
   const [input, setInput] = useState("");
-  const [mode, setMode] = useState(() => localStorage.getItem(modeStorageKey) || "stream-ai");
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [messages, setMessages] = useState(DEFAULT_MESSAGES);
 
   const quickPrompts = useMemo(
     () => [
@@ -34,178 +15,12 @@ function AiCoachPage() {
     []
   );
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        setMessages(parsed);
-      }
-    } catch (_error) {
-      setMessages(DEFAULT_MESSAGES);
-    }
-  }, [storageKey]);
-
-  useEffect(() => {
-    setMode(localStorage.getItem(modeStorageKey) || "stream-ai");
-  }, [modeStorageKey]);
-
-  useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(messages));
-  }, [messages, storageKey]);
-
-  useEffect(() => {
-    localStorage.setItem(modeStorageKey, mode);
-  }, [mode, modeStorageKey]);
-
-  useEffect(() => {
-    async function syncFromRecentJobs() {
-      try {
-        const res = await api.get("/ai/jobs/recent", { params: { limit: 30 } });
-        const jobs = res.data?.jobs || [];
-        if (!Array.isArray(jobs) || jobs.length === 0) return;
-
-        setMessages((prev) =>
-          prev.map((msg) => {
-            if (msg.role !== "assistant") return msg;
-            const matchingJob = jobs.find(
-              (job) =>
-                (msg.jobId && String(job.id) === String(msg.jobId)) ||
-                (msg.clientRequestId && msg.clientRequestId === job.clientRequestId)
-            );
-            if (!matchingJob) return msg;
-
-            if (matchingJob.status === "completed") {
-              return {
-                ...msg,
-                jobId: matchingJob.id,
-                status: "completed",
-                text: matchingJob.reply || msg.text,
-              };
-            }
-            if (matchingJob.status === "failed") {
-              return {
-                ...msg,
-                jobId: matchingJob.id,
-                status: "failed",
-                text: matchingJob.error || "AI response failed",
-              };
-            }
-            return { ...msg, jobId: matchingJob.id, status: matchingJob.status };
-          })
-        );
-      } catch (_error) {
-        // Silent fallback; local history still works even if sync fails.
-      }
-    }
-
-    syncFromRecentJobs();
-  }, []);
-
-  useEffect(() => {
-    const pending = messages.filter(
-      (msg) =>
-        msg.role === "assistant" &&
-        msg.jobId &&
-        (msg.status === "queued" || msg.status === "processing")
-    );
-    setIsStreaming(pending.length > 0);
-    if (pending.length === 0) return undefined;
-
-    const timer = setInterval(async () => {
-      try {
-        const ids = pending.map((msg) => msg.jobId).join(",");
-        const res = await api.get("/ai/jobs/status", { params: { ids } });
-        const jobs = res.data?.jobs || [];
-
-        setMessages((prev) =>
-          prev.map((msg) => {
-            if (msg.role !== "assistant" || !msg.jobId) return msg;
-            const job = jobs.find((item) => String(item.id) === String(msg.jobId));
-            if (!job) return msg;
-
-            if (job.status === "completed") {
-              return { ...msg, status: "completed", text: job.reply || msg.text };
-            }
-            if (job.status === "failed") {
-              return { ...msg, status: "failed", text: job.error || "AI response failed" };
-            }
-            return { ...msg, status: job.status };
-          })
-        );
-      } catch (_error) {
-        // Keep polling in next interval.
-      }
-    }, 2000);
-
-    return () => clearInterval(timer);
-  }, [messages]);
-
   async function ask(e) {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isStreaming) return;
     const msg = input.trim();
-    setMessages((prev) => [...prev, { role: "user", text: msg }]);
     setInput("");
-    if (mode === "data-coach") {
-      try {
-        const res = await api.post("/coach/chat", { message: msg });
-        setMessages((prev) => [...prev, { role: "assistant", text: res.data.reply }]);
-      } catch (error) {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", text: error?.response?.data?.message || "AI call failed" },
-        ]);
-      }
-      return;
-    }
-    const clientRequestId =
-      globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-    const pendingAssistant = {
-      id: `assistant-${clientRequestId}`,
-      role: "assistant",
-      text: "",
-      status: "queued",
-      jobId: "",
-      clientRequestId,
-      createdAt: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, pendingAssistant]);
-    try {
-      const res = await api.post("/ai/jobs", { message: msg, clientRequestId });
-      const job = res.data?.job;
-      setMessages((prev) =>
-        prev.map((item) =>
-          item.clientRequestId === clientRequestId
-            ? { ...item, jobId: job?.id || "", status: job?.status || "processing" }
-            : item
-        )
-      );
-    } catch (error) {
-      setMessages((prev) =>
-        prev.map((item) =>
-          item.clientRequestId === clientRequestId
-            ? {
-                ...item,
-                status: "failed",
-                text: error?.response?.data?.message || "Unable to queue AI request",
-              }
-            : item
-        )
-      );
-    }
-  }
-
-  function clearChat() {
-    const resetMessages = [
-      {
-        role: "assistant",
-        text: "Chat reset. Ask anything about your studies and planning.",
-      },
-    ];
-    setMessages(resetMessages);
-    localStorage.setItem(storageKey, JSON.stringify(resetMessages));
+    await sendMessage(msg);
   }
 
   return (
@@ -223,7 +38,7 @@ function AiCoachPage() {
             <option value="stream-ai">AI Chat (background response mode)</option>
             <option value="data-coach">Data Coach (performance-backed)</option>
           </select>
-          <button type="button" className="btn ghost" onClick={clearChat}>
+          <button type="button" className="btn ghost" onClick={resetChat}>
             Clear chat
           </button>
         </div>
@@ -240,8 +55,9 @@ function AiCoachPage() {
           ))}
         </div>
         <div className="chat-box">
-          {messages.map((msg, idx) => (
-            <div key={idx} className={`msg ${msg.role}`}>
+          {!hydrated && <div className="typing">Restoring previous conversation...</div>}
+          {messages.map((msg) => (
+            <div key={msg.id || `${msg.role}-${msg.createdAt || msg.text}`} className={`msg ${msg.role}`}>
               {msg.text || (msg.role === "assistant" && msg.status !== "completed" ? "..." : "")}
             </div>
           ))}
